@@ -66,3 +66,16 @@ def generate_correct_output(state:AgentState) -> AgentState:
     
 graph.add_node("generate_correct_output", generate_correct_output)
     
+def check_user_output(state:AgentState) -> AgentState:
+    state.user_attempts += 1
+    prompt = PromptTemplate.from_template(
+        input_variables=["user_code", "correct_output"],
+        template="Compile the user's code and check if it is correct or not: {user_code} and the correct output is: {correct_output}"
+    )
+    
+    is_correct = llm.invoke(prompt.format(user_code=state.user_code, correct_output=state.correct_output))
+    state.is_correct = is_correct
+    return state
+    
+graph.add_node("check_user_output", check_user_output)
+
