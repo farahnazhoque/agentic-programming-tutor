@@ -55,8 +55,22 @@ def generate_boilerplate(state: AgentState) -> AgentState:
     return state
     
 graph.add_node("generate_boilerplate", generate_boilerplate)
+
+def generate_correct_code(state:AgentState) -> AgentState:
+    llm = ChatGoogleGenerativeAI(
+        model_name="gemini-1.5-flash",
+        google_api_key=os.getenv("GOOGLE_API_KEY"),
+    )
     
-def 
+    prompt = PromptTemplate.from_template(
+        input_variables=["boilerplate_code"],
+        template="Generate the correct code for the given boilerplate code: {boilerplate_code}"
+    )
     
+    correct_code = llm.invoke(prompt.format(boilerplate_code=state.boilerplate_code))
+    state.correct_code = correct_code
+    return state
+    
+graph.add_node("generate_correct_code", generate_correct_code)
     
     
