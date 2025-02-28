@@ -79,3 +79,15 @@ def check_user_output(state:AgentState) -> AgentState:
     
 graph.add_node("check_user_output", check_user_output)
 
+def generate_hints(state:AgentState) -> AgentState:
+    prompt = PromptTemplate.from_template(
+        input_variables=["user_code", "is_correct"],
+        template = "Generate a set of bullet points as hints to guide the user towards the right direction without giving away the answer. Make it based on the user's approach. Here is the user's code: {user_code}"
+    )
+    
+    hints = llm.invoke(prompt.format(user_code=state.user_code))
+    state.hints_given.append(hints)
+    return state
+    
+graph.add_node("generate_hints", generate_hints)
+
