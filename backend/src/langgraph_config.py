@@ -91,3 +91,15 @@ def generate_hints(state:AgentState) -> AgentState:
     
 graph.add_node("generate_hints", generate_hints)
 
+def corrected_code(state:AgentState) -> AgentState:
+    prompt = PromptTemplate.from_template(
+        input_variables=["user_code", "hints_given"],
+        template="Generate the corrected code based on the hints given: {hints_given} and the user's code: {user_code}"
+    )
+    
+    corrected_code = llm.invoke(prompt.format(user_code=state.user_code, hints_given=state.hints_given))
+    state.user_code = corrected_code
+    return state
+    
+graph.add_node("corrected_code", corrected_code)
+
