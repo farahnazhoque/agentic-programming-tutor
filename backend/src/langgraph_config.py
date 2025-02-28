@@ -54,3 +54,15 @@ def generate_boilerplate(state: AgentState) -> AgentState:
     
 graph.add_node("generate_boilerplate", generate_boilerplate)
 
+def generate_correct_output(state:AgentState) -> AgentState:    
+    prompt = PromptTemplate.from_template(
+        input_variables=["boilerplate_code"],
+        template="Generate the correct output for the given boilerplate code: {boilerplate_code}"
+    )
+    
+    correct_output = llm.invoke(prompt.format(boilerplate_code=state.boilerplate_code))
+    state.correct_output = correct_output
+    return state
+    
+graph.add_node("generate_correct_output", generate_correct_output)
+    
