@@ -103,3 +103,25 @@ def corrected_code(state:AgentState) -> AgentState:
     
 graph.add_node("corrected_code", corrected_code)
 
+# adding edges
+# Main flow
+graph.add_edge(START, "summarize")
+graph.add_edge("summarize", "generate_boilerplate")
+graph.add_edge("generate_boilerplate", "generate_correct_output")
+graph.add_edge("generate_correct_output", "check_user_output")
+
+# Loop back to check user output if attempts remaining and not correct
+graph.add_edge("check_user_output", "check_user_output", condition=lambda x: not x.is_correct and x.user_attempts < x.max_attempts)
+
+# Generate hints if incorrect
+graph.add_edge("check_user_output", "generate_hints", condition=lambda x: not x.is_correct)
+
+# If correct, end the flow
+graph.add_edge("check_user_output", END, condition=lambda x: x.is_correct)
+
+# After hints, loop back to check output if attempts remain
+graph.add_edge("generate_hints", "check_user_output", condition=lambda x: x.user_attempts < x.max_attempts)
+
+# If max attempts reached, correct the code and end
+graph.add_edge("generate_hints", "corrected_code", condition=lambda x: x.user_attempts >= x.max_attempts)
+graph.add_edge("corrected_code", END)
