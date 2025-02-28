@@ -22,11 +22,14 @@ app.add_middleware(
     allow_headers=["*"], # allow all headers
 )
 
-# initializing the Google Generative AI model
-llm = ChatGoogleGenerativeAI(
-    model_name="gemini-1.5-flash",
-    google_api_key=os.getenv("GOOGLE_API_KEY"),
-)
+def get_llm():
+    # initializing the Google Generative AI model
+    llm = ChatGoogleGenerativeAI(
+        model_name="gemini-1.5-flash",
+        google_api_key=os.getenv("GOOGLE_API_KEY"),
+    )
+    return llm
+
 
 # defining the endpoint for the frontend to start the agent
 @app.post("/start_agent/")

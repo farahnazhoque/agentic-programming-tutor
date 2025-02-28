@@ -7,6 +7,13 @@ from langgraph.graph.state import State
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain.prompts import PromptTemplate
 from langchain_core.messages import HumanMessage, AIMessage
+from main import get_llm
+import os  # Also needed for os.getenv
+from dotenv import load_dotenv
+# loading environment variables for security
+load_dotenv()
+
+llm = get_llm()
 
 
 # the state of the agent; this is the state that will be used to store the state of the agent
@@ -15,19 +22,14 @@ class AgentState(State):
     max_attempts: int = 3 # the maximum number of attempts to allow the user to submit the code 
     user_attempts: int = 0 # the number of attempts the user has made 
     user_code: str = "" # stores the user's code after each attempt
-    correct_code: str = "" # the correct code that the user needs to submit (should be dynamic, as the user's approach may be different so has to update based on the user's approach)
-    best_code: str = "" # the best code that the model thinks is the correct code
-    hints_given: str = "" # the hints that the model provides to the user to help them solve the problem
+    correct_output: str = "" # the correct output that the user needs to submit 
+    hints_given: list[str] = [] # the hints that the model provides to the user to help them solve the problem
     summary: str = "" # the summary of the explanation
     boilerplate_code: str = "" # the boilerplate code that the model provides to the user to help them understand the explanation
 
 graph = StateGraph(AgentState)
 
 def summarize(state: AgentState) -> AgentState:
-    llm = ChatGoogleGenerativeAI(
-        model_name="gemini-1.5-flash",
-        google_api_key=os.getenv("GOOGLE_API_KEY"),
-    )
     summary_prompt = PromptTemplate.from_template(
         input_variables=["explanation"],
         template="Explain this in simple terms and provide the output in buller points: {explanation}"
@@ -41,10 +43,6 @@ graph.add_node("summarize", summarize)
 
     
 def generate_boilerplate(state: AgentState) -> AgentState:
-    llm = ChatGoogleGenerativeAI(
-        model_name="gemini-1.5-flash",
-        google_api_key=os.getenv("GOOGLE_API_KEY"),
-    )
     prompt = PromptTemplate.from_template(
         input_variables=["explanation"],
         template="Generate a boilerplate code with comments to help the user understand this explanation: {summary}"    
@@ -56,21 +54,3 @@ def generate_boilerplate(state: AgentState) -> AgentState:
     
 graph.add_node("generate_boilerplate", generate_boilerplate)
 
-def generate_correct_code(state:AgentState) -> AgentState:
-    llm = ChatGoogleGenerativeAI(
-        model_name="gemini-1.5-flash",
-        google_api_key=os.getenv("GOOGLE_API_KEY"),
-    )
-    
-    prompt = PromptTemplate.from_template(
-        input_variables=["boilerplate_code"],
-        template="Generate the correct code for the given boilerplate code: {boilerplate_code}"
-    )
-    
-    correct_code = llm.invoke(prompt.format(boilerplate_code=state.boilerplate_code))
-    state.correct_code = correct_code
-    return state
-    
-graph.add_node("generate_correct_code", generate_correct_code)
-    
-    
