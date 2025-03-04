@@ -10,9 +10,15 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@codemirror/basic-setup": "^0.20.0",
+    "@codemirror/lang-javascript": "^6.2.3",
+    "@codemirror/lang-python": "^6.1.7",
+    "@codemirror/view": "^6.36.4",
     "@headlessui/react": "^2.2.0",
     "@heroicons/react": "^2.2.0",
     "@tailwindcss/vite": "^4.0.9",
+    "@uiw/react-codemirror": "^4.23.10",
+    "codemirror": "^6.0.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-router-dom": "^7.2.0",

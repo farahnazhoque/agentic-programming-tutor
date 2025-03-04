@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { Dialog, DialogPanel } from '@headlessui/react'
 import { Bars3Icon, XMarkIcon } from '@heroicons/react/24/outline'
-
+import { Link } from 'react-router-dom'
 const navigation = [
   { name: 'Product', href: '#' },
   { name: 'Features', href: '#' },
@@ -14,7 +14,7 @@ const navigation = [
 export default function Home() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [prompt, setPrompt] = useState('')
-  const [attempts, setAttempts] = useState(1)
+  const [attempts, setAttempts] = useState(3)
   const [language, setLanguage] = useState('Python')
 
   return (
@@ -166,11 +166,10 @@ export default function Home() {
               <option value="Swift">Swift</option>
               <option value="Kotlin">Kotlin</option>
               </select>
-              <button
-                className="rounded-md mt-4 bg-indigo-600 px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+              <Link to="/ide" className="rounded-md mt-4 bg-indigo-600 px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
               >
                 Start Learning
-              </button>
+              </Link>
             </div>
           </div>
         </div>
