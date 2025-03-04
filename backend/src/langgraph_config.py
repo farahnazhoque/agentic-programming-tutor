@@ -21,6 +21,7 @@ class AgentState(State):
     explanation: str = "" # the explanation provided by the user as the prompt to be used by the agent
     max_attempts: int = 3 # the maximum number of attempts to allow the user to submit the code 
     user_attempts: int = 0 # the number of attempts the user has made 
+    language: str = "Python" # the programming language that the user wants to use
     user_code: str = "" # stores the user's code after each attempt
     correct_output: str = "" # the correct output that the user needs to submit 
     hints_given: list[str] = [] # the hints that the model provides to the user to help them solve the problem
@@ -44,11 +45,11 @@ graph.add_node("summarize", summarize)
     
 def generate_boilerplate(state: AgentState) -> AgentState:
     prompt = PromptTemplate.from_template(
-        input_variables=["explanation"],
-        template="Generate a boilerplate code with comments to help the user understand this explanation: {summary}"    
+        input_variables=["explanation", "language"],
+        template="Generate a boilerplate code with comments to help the user understand this explanation: {explanation} and the language is: {language}"    
     )
     
-    boilerplate_code = llm.invoke(prompt.format(summary=state.summary))
+    boilerplate_code = llm.invoke(prompt.format(explanation=state.explanation))
     state.boilerplate_code = boilerplate_code
     return state
     
@@ -56,8 +57,8 @@ graph.add_node("generate_boilerplate", generate_boilerplate)
 
 def generate_correct_output(state:AgentState) -> AgentState:    
     prompt = PromptTemplate.from_template(
-        input_variables=["boilerplate_code"],
-        template="Generate the correct output for the given boilerplate code: {boilerplate_code}"
+        input_variables=["boilerplate_code", "language"],
+        template="Generate the correct output for the given boilerplate code: {boilerplate_code} and the language is: {language}"
     )
     
     correct_output = llm.invoke(prompt.format(boilerplate_code=state.boilerplate_code))
