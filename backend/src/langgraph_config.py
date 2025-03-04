@@ -30,67 +30,50 @@ class AgentState(State):
 
 graph = StateGraph(AgentState)
 
-def summarize(state: AgentState) -> AgentState:
-    summary_prompt = PromptTemplate.from_template(
-        input_variables=["explanation"],
-        template="Explain this in simple terms and provide the output in buller points: {explanation}"
-    )
-    
-    summary_text = llm.invoke(summary_prompt.format(explanation=state.explanation))
-    state.summary = summary_text # storing the summary in the state; what it means is that the summary is being stored in the state in a new key called summary
-    return state # returning the state after the summary is stored; the state now contains the summary as well as the explanaton 
-
-graph.add_node("summarize", summarize)
-
-    
-def generate_boilerplate(state: AgentState) -> AgentState:
+# this function summarizes, generates boilerplate code, and generates the correct output
+def process_explanation(state:AgentState) -> AgentState:
     prompt = PromptTemplate.from_template(
         input_variables=["explanation", "language"],
-        template="Generate a boilerplate code with comments to help the user understand this explanation: {explanation} and the language is: {language}"    
+        template="""
+        Based on the following explanation, perform the following tasks:
+        1. Summarize the explanation in simple terms using bullet points.
+        2. Generate a boilerplate code with comment in this language: {language}
+        3. Generate the expected correct output for the given boilerplate code.
+        4. Return the summary, boilerplate code, and correct output in three separate lines.
+        Explanation: {explanation}
+        """
     )
-    
-    boilerplate_code = llm.invoke(prompt.format(explanation=state.explanation))
-    state.boilerplate_code = boilerplate_code
+    response = llm.invoke(prompt.format(explanation=state.explanation, language=state.language))
+    summary, boilerplate_code, correct_output = response.split('\n')
+    state.summary = summary.strip()
+    state.boilerplate_code = boilerplate_code.strip()
+    state.correct_output = correct_output.strip()
     return state
-    
-graph.add_node("generate_boilerplate", generate_boilerplate)
 
-def generate_correct_output(state:AgentState) -> AgentState:    
-    prompt = PromptTemplate.from_template(
-        input_variables=["boilerplate_code", "language"],
-        template="Generate the correct output for the given boilerplate code: {boilerplate_code} and the language is: {language}"
-    )
-    
-    correct_output = llm.invoke(prompt.format(boilerplate_code=state.boilerplate_code))
-    state.correct_output = correct_output
-    return state
-    
-graph.add_node("generate_correct_output", generate_correct_output)
-    
-def check_user_output(state:AgentState) -> AgentState:
+graph.add_node("process_explanation", process_explanation)
+
+#this function checks user output and generates hints if incorrect
+def check_and_hint(state:AgentState) -> AgentState:
     state.user_attempts += 1
     prompt = PromptTemplate.from_template(
         input_variables=["user_code", "correct_output"],
-        template="Compile the user's code and check if it is correct or not: {user_code} and the correct output is: {correct_output}"
+        template="""Analyze the user's code against the expected correct output
+        - If the code is correct, return: "Correct"
+        - If incorrect, return: "Incorrect" followed by bullet-point hints to guide the user in fixing it.
+        
+        User Code: {user_code}
+        Correct Output: {correct_output}
+        """
     )
-    
-    is_correct = llm.invoke(prompt.format(user_code=state.user_code, correct_output=state.correct_output))
-    state.is_correct = is_correct
+    response = llm.invoke(prompt.format(user_code=state.user_code, correct_output=state.correct_output))
+    if "Correct" in response:
+        state.is_correct = True
+    else:
+        state.is_correct = False
+        hints = response.split("Incorrect")[1].strip()
+        state.hints_given.append(hints)
     return state
     
-graph.add_node("check_user_output", check_user_output)
-
-def generate_hints(state:AgentState) -> AgentState:
-    prompt = PromptTemplate.from_template(
-        input_variables=["user_code", "is_correct"],
-        template = "Generate a set of bullet points as hints to guide the user towards the right direction without giving away the answer. Make it based on the user's approach. Here is the user's code: {user_code}"
-    )
-    
-    hints = llm.invoke(prompt.format(user_code=state.user_code))
-    state.hints_given.append(hints)
-    return state
-    
-graph.add_node("generate_hints", generate_hints)
 
 def corrected_code(state:AgentState) -> AgentState:
     prompt = PromptTemplate.from_template(

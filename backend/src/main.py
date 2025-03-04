@@ -39,11 +39,13 @@ async def start_agent(user_input: dict):
     
     # getting the max attempts from the user
     max_attempts = user_input.get("max_attempts", 3)
-
+    # getting the language from the user
+    language = user_input.get("language", "Python")
     # initializing the agent
     state = AgentState(
         explanation=explanation,
         max_attempts=max_attempts,
+        language=language,
     )
 
     # running the agent and storing the output in result
