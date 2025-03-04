@@ -1,6 +1,8 @@
+flask
+flask-cors
 langchain
 langchain-core
-langchain-graph
+langgraph
 fastapi
 uvicorn[standard]
 langchain-google-genai

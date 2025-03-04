@@ -1,11 +1,10 @@
 from typing import TypedDict, Annotated, Sequence
 from typing_extensions import TypedDict
 from langgraph.graph import StateGraph, START, END
-from langgraph.graph.state import State 
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain.prompts import PromptTemplate
 from langchain_core.messages import HumanMessage, AIMessage
-from main import get_llm
+from utils import get_llm
 import os  
 from dotenv import load_dotenv
 from functools import lru_cache
@@ -16,17 +15,19 @@ load_dotenv()
 llm = get_llm()
 
 # Define the agent's state
-class AgentState(State):
-    explanation: str = ""
-    max_attempts: int = 3
-    user_attempts: int = 0
-    language: str = "Python"
-    user_code: str = ""
-    correct_output: str = ""
-    hints_given: list[str] = []
-    summary: str = ""
-    boilerplate_code: str = ""
-    is_correct: bool = False  # ✅ Added to track correctness
+from typing import TypedDict
+
+class AgentState(TypedDict):
+    explanation: str
+    max_attempts: int
+    user_attempts: int
+    language: str
+    user_code: str
+    correct_output: str
+    hints_given: list[str]
+    summary: str
+    boilerplate_code: str
+    is_correct: bool
 
 graph = StateGraph(AgentState)
 
@@ -117,15 +118,16 @@ graph.add_node("verify_corrected_code", verify_corrected_code)
 graph.add_edge(START, "process_explanation")
 graph.add_edge("process_explanation", "check_and_hint")
 
-# ✅ If correct, terminate
-graph.add_edge("check_and_hint", END, condition=lambda x: x.is_correct)
+# If correct, terminate
+graph.add_conditional_edges(
+    "check_and_hint",
+    lambda x: "is_correct" if x.is_correct else "retry",
+    {
+        "is_correct": END,
+        "retry": lambda x: "check_and_hint" if x.user_attempts < x.max_attempts else "generate_corrected_code"
+    }
+)
 
-# ✅ If incorrect but max attempts NOT reached, retry
-graph.add_edge("check_and_hint", "check_and_hint", condition=lambda x: not x.is_correct and x.user_attempts < x.max_attempts)
-
-# ✅ If max attempts reached, generate corrected code
-graph.add_edge("check_and_hint", "generate_corrected_code", condition=lambda x: not x.is_correct and x.user_attempts >= x.max_attempts)
-
-# ✅ Verify corrected code before ending
+# After correction, verify and end
 graph.add_edge("generate_corrected_code", "verify_corrected_code")
 graph.add_edge("verify_corrected_code", END)
