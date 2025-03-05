@@ -1,48 +1,68 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-from langchain_core.messages import HumanMessage, AIMessage
-from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain.prompts import PromptTemplate
-from langgraph.graph import StateGraph, START, END  # ✅ No 'State' import
-from typing import TypedDict
-import os
 from dotenv import load_dotenv
-from functools import lru_cache
-from langgraph_config import AgentState, graph
-from utils import get_llm  # Updated import
-# loading environment variables for security
+from langgraph_config import compiled_graph
+
+# Load environment variables
 load_dotenv()
 
-# initializing the Flask app; the purpose of this app is to provide a simple API for the frontend to interact with
+# Initialize Flask app
 app = Flask(__name__)
+CORS(app, resources={r"/*": {"origins": "http://localhost:5173"}})
 
-# adding CORS support; the purpose of this is to allow the frontend to interact with the backend
-CORS(app)
-
-# defining the endpoint for the frontend to start the agent
 @app.route("/start_agent/", methods=["POST"])
 def start_agent():
-    # getting the request data
-    user_input = request.get_json()
-    
-    # getting the user's explanation as the prompt for the agent
-    explanation = user_input.get("explanation", "")
-    # getting the max attempts from the user
-    max_attempts = user_input.get("max_attempts", 3)
-    # getting the language from the user
-    language = user_input.get("language", "Python")
-    # initializing the agent
-    state = AgentState(
-        explanation=explanation,
-        max_attempts=max_attempts,
-        language=language,
-    )
+    try:
+        # Get request data from frontend
+        user_input = request.get_json()
+        
+        # Debugging log
+        print("Received request data:", user_input)
 
-    # running the agent and storing the output in result
-    result = graph.invoke(state)
+        # Validate required fields
+        if not user_input:
+            return jsonify({"error": "No input data provided"}), 400
 
-    # returning the result to the frontend
-    return jsonify(result)
+        explanation = user_input.get("explanation")
+        max_attempts = user_input.get("max_attempts", 3)
+        language = user_input.get("language", "Python")
+
+        # Validate explanation field
+        if not explanation:
+            return jsonify({"error": "Explanation field is required"}), 400
+
+        # Initialize state dictionary (not object)
+        state = {
+            "explanation": explanation,
+            "max_attempts": max_attempts,
+            "language": language,
+            "user_attempts": 0,
+            "user_code": "",
+            "correct_output": "",
+            "hints_given": [],
+            "summary": "",
+            "boilerplate_code": "",
+            "is_correct": False
+        }
+
+        # Run compiled state graph
+        result = compiled_graph.invoke(state)  # ✅ Use compiled graph
+
+        # Log output
+        print("Processing result:", result)
+
+        # Return JSON response
+        return jsonify(result)
+
+    except Exception as e:
+        # Log detailed error traceback
+        import traceback
+        print("Error occurred:", str(e))
+        print("Traceback:", traceback.format_exc())
+        return jsonify({
+            "error": str(e),
+            "traceback": traceback.format_exc()
+        }), 500
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=5015, debug=True)
