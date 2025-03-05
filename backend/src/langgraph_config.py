@@ -43,26 +43,23 @@ def process_explanation(state: dict) -> dict:
         Explanation: {explanation}
         """
     )
-    
-    # Get AI response
+
     response = llm.invoke(prompt.format(explanation=state["explanation"], language=state["language"]))
-
-    # Ensure we're extracting text content from AIMessage
-    response_text = response.content  # ✅ Fix: Extract text instead of using .split on AIMessage
-
-    # Handle cases where AI does not return the expected format
-    response_lines = response_text.split("\n")
-
+    
+    # Extract text properly
+    response_text = response.content if hasattr(response, "content") else str(response)
+    
+    # Ensure AI returned at least 3 lines
+    response_lines = response_text.strip().split("\n")
     if len(response_lines) < 3:
         raise ValueError("AI response format is incorrect. Expected three lines (summary, code, output).")
 
-    summary, boilerplate_code, correct_output = response_lines[:3]  # Take only first three lines
+    summary, boilerplate_code, correct_output = response_lines[:3]
 
     state["summary"] = summary.strip()
     state["boilerplate_code"] = boilerplate_code.strip()
     state["correct_output"] = correct_output.strip()
     return state
-
 
 graph.add_node("process_explanation", process_explanation)
 

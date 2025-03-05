@@ -2,27 +2,36 @@ import {javascript} from "@codemirror/lang-javascript"
 import {EditorView, basicSetup} from "codemirror"
 import {useEffect, useRef} from "react"
 import {python} from "@codemirror/lang-python"
+import { useParams } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 
 export default function IDE() {
   const editorRef = useRef(null);
   const viewRef = useRef(null);
+  const location = useLocation();
+  const searchParams = new URLSearchParams(location.search);
+  const dataString = searchParams.get("data");
+  const parsedData = dataString ? JSON.parse(decodeURIComponent(dataString)) : null;
+
+  console.log("Parsed Data:", parsedData); // Debugging log
+
+  const defaultCode = parsedData ? parsedData.boilerplate_code : "print('Hello, World!')";
 
   useEffect(() => {
     viewRef.current = new EditorView({
-      doc: "print('Hello, world!')",
+      doc: defaultCode,
       parent: editorRef.current,
       extensions: [
         basicSetup,
         python()
       ]
     });
-
-    // Cleanup on unmount
+  
     return () => {
       viewRef.current.destroy();
     };
-  }, []);
-
+  }, [parsedData]);
+  
   return (
     <div className="bg-white">
       <div className="relative isolate px-6 pt-14 lg:px-8">

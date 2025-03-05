@@ -14,18 +14,25 @@ export default function Prompt() {
   // Function to send data to backend
   const sendPromptToBackend = async () => {
     try {
-      const response = await axios.post('/start_agent/', {
+      const response = await axios.post('http://localhost:5015/start_agent/', {
         explanation: prompt,
         max_attempts: attempts,
         language: language,
       });
-
-      console.log(response.data); // Log response from backend
-      window.location.href = `/ide?data=${encodeURIComponent(JSON.stringify(response.data))}`; // Redirect to IDE page with response data
+  
+      console.log("API Response:", response.data); // Debugging log
+  
+      // Ensure correct response format before redirecting
+      if (response.data && response.data.correct_output) {
+        window.location.href = `/ide?data=${encodeURIComponent(JSON.stringify(response.data))}`;
+      } else {
+        console.error("Unexpected response format:", response.data);
+      }
     } catch (error) {
       console.error("Error sending data:", error);
     }
   };
+  
 
   return (
     <div className="bg-white">
