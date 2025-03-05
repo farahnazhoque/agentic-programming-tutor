@@ -83,15 +83,19 @@ def get_hints(user_code: str, correct_output: str) -> str:
 def check_and_hint_user_output(state: dict) -> dict:
     state["user_attempts"] += 1
     
-    response = get_hints(state["user_code"], state["correct_output"])  # Cached call
+    # ✅ Ensure we extract text properly from AIMessage
+    response = get_hints(state["user_code"], state["correct_output"])
+    response_text = response.content if hasattr(response, "content") else str(response)
 
-    if "Correct" in response:
+    if "Correct" in response_text:
         state["is_correct"] = True
     else:
         state["is_correct"] = False
-        state["hints_given"].append(response.replace("Incorrect", "").strip())  # Store hints
-    
+        # ✅ Now response_text is a string, so we can safely use .replace()
+        state["hints_given"].append(response_text.replace("Incorrect", "").strip())  
+
     return state
+
 
 graph.add_node("check_and_hint", check_and_hint_user_output)
 
