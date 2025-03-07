@@ -36,27 +36,31 @@ def process_explanation(state: dict) -> dict:
         raise ValueError("Explanation cannot be empty")
     
     prompt = f"""
-    You are an AI that provides structured programming explanations. 
-    Given this explanation about {state["language"]} programming:
-
-    1. **Summarize** the explanation in **clear bullet points**.
-    2. **Generate a boilerplate code example** in {state["language"]}, written in a step-by-step Codecademy-style format. 
-       - If the explanation is **not directly codeable**, create a related programming **problem** and provide a solution.
-       - The code **must** be inside triple backticks (` ```{state["language"]} `).
+    You are an AI that provides structured programming explanations.
+    Given this explanation about {state["explanation"]}:
+    
+    1. **Summarize** the explanation in **clear bullet points**
+    2. **Generate an interactive coding exercise** instead of a complete solution:
+       - **Include step-by-step instructions** in inline comments.
+       - **Leave key parts blank** using `# TODO` placeholders.
+       - **Ensure the user writes missing code to complete the exercise**.
     3. **Provide the expected output** in a separate `OUTPUT` section.
-
-    ### **Format Your Response Exactly Like This**:
-
+    
+    ### **Format your response exactly like this:**
+    
     ```
     SUMMARY:
-    • Bullet point 1
-    • Bullet point 2
+    • Point 1
+    • Point 2
 
     CODE:
     ```{state["language"]}
     // Step 1: Explain first concept
+    // TODO: Implement the first part
     // Step 2: Introduce the next part
+    // TODO: Implement the next part
     // Step 3: Implement the logic clearly
+    // TODO: Implement the logic
     <boilerplate code>
     ```
 
@@ -65,18 +69,22 @@ def process_explanation(state: dict) -> dict:
     <expected output>
     ```
     ```
-
+    
     Explanation: {state["explanation"]}
     """
-
+    
     response = llm.invoke(prompt)
     response_text = response.content if hasattr(response, "content") else str(response)
-
+    
     # Debug print the raw response
-    print("LLM Response:", response_text)
-
+    print("Raw response:", response_text)
+    
     # Extract using regex
     import re
+    # Extract summary section using regex pattern:
+    # - Matches "SUMMARY:" followed by whitespace
+    # - Captures all text (.*?) until two newlines (\n\n) are found
+    # - re.DOTALL allows . to match newlines for multi-line summaries
     summary_match = re.search(r"SUMMARY:\s*(.*?)\n\n", response_text, re.DOTALL)
     code_match = re.search(r"CODE:\s*```.*?\n(.*?)```", response_text, re.DOTALL)
     output_match = re.search(r"OUTPUT:\s*```\n(.*?)```", response_text, re.DOTALL)
