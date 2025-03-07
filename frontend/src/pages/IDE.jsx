@@ -69,13 +69,18 @@ export default function IDE() {
           <div className="mb-4">
             <h2 className="text-xl font-semibold mb-4">Code Editor</h2>
             <div 
-              ref={editorRef} 
-              className="border rounded-lg shadow-sm"
-              style={{
-                minHeight: defaultCode.split('\n').length * 22 + 'px', // Approximate line height
-                height: 'auto'
-              }}
+                ref={editorRef} 
+                className="border rounded-lg shadow-sm"
+                style={{
+                    minHeight: '200px', // Reduced minimum height
+                    maxHeight: '600px', // Added max height for scrolling
+                    height: 'auto', 
+                    wordWrap: 'break-word',
+                    whiteSpace: 'normal', // Allows proper text wrapping
+                    overflowY: 'auto' // Enables scrolling when content exceeds max height
+                }}
             ></div>
+
           </div>
           <button
             className="rounded-md bg-indigo-600 px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
