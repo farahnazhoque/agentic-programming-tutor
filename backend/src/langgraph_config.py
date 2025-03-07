@@ -35,59 +35,75 @@ def process_explanation(state: dict) -> dict:
     if not state.get("explanation") or state["explanation"].strip() == "":
         raise ValueError("Explanation cannot be empty")
     
-    prompt = PromptTemplate.from_template(
-        template="""
-        Given this explanation about {language} programming, please provide:
+    prompt = f"""
+    You are an AI that provides structured programming explanations. 
+    Given this explanation about {state["language"]} programming:
 
-        1. A clear bullet-point summary
-        2.A step-by-step, beginner-friendly boilerplate code example in {language} with inline comments explaining each step, similar to Codecademy's learning style. If the explanation cannot be directly translated into code, create a related coding problem that helps reinforce the concept and provide a structured solution.
-        3. The expected output of the code
+    1. **Summarize** the explanation in **clear bullet points**.
+    2. **Generate a boilerplate code example** in {state["language"]}, written in a step-by-step Codecademy-style format. 
+       - If the explanation is **not directly codeable**, create a related programming **problem** and provide a solution.
+       - The code **must** be inside triple backticks (` ```{state["language"]} `).
+    3. **Provide the expected output** in a separate `OUTPUT` section.
 
-        Format your response exactly like this:
-        SUMMARY:
-        • Point 1
-        • Point 2
+    ### **Format Your Response Exactly Like This**:
 
-        CODE:
-        // Step 1: Explain the first part of the code
-        // Step 2: Introduce the next concept
-        // Step 3: Implement the logic with clarity
-        <boilerplate code here>
+    ```
+    SUMMARY:
+    • Bullet point 1
+    • Bullet point 2
 
+    CODE:
+    ```{state["language"]}
+    // Step 1: Explain first concept
+    // Step 2: Introduce the next part
+    // Step 3: Implement the logic clearly
+    <boilerplate code>
+    ```
 
-        OUTPUT:
-        <expected output>
+    OUTPUT:
+    ```
+    <expected output>
+    ```
+    ```
 
-        Explanation: {explanation}
-        """
-    )
+    Explanation: {state["explanation"]}
+    """
 
-    response = llm.invoke(prompt.format(explanation=state["explanation"], language=state["language"]))
+    response = llm.invoke(prompt)
     response_text = response.content if hasattr(response, "content") else str(response)
-    
-    # Split by sections
-    sections = response_text.split("\n\n")
-    
-    try:
-        summary = sections[0].replace("SUMMARY:", "").strip()
-        code = sections[1].replace("CODE:", "").strip()
-        output = sections[2].replace("OUTPUT:", "").strip()
-        
-        state["summary"] = summary
-        state["boilerplate_code"] = code
-        state["correct_output"] = output
-        
-        # Debug logging
-        print("Processed State:", {
-            "summary": state["summary"],
-            "code": state["boilerplate_code"],
-            "output": state["correct_output"]
-        })
-        
-        return state
-    except Exception as e:
-        print("Error parsing LLM response:", response_text)
-        raise ValueError(f"Failed to parse LLM response: {str(e)}")
+
+    # Debug print the raw response
+    print("LLM Response:", response_text)
+
+    # Extract using regex
+    import re
+    summary_match = re.search(r"SUMMARY:\s*(.*?)\n\n", response_text, re.DOTALL)
+    code_match = re.search(r"CODE:\s*```.*?\n(.*?)```", response_text, re.DOTALL)
+    output_match = re.search(r"OUTPUT:\s*```\n(.*?)```", response_text, re.DOTALL)
+
+    if summary_match:
+        state["summary"] = summary_match.group(1).strip()
+    else:
+        raise ValueError("Failed to extract SUMMARY from response.")
+
+    if code_match:
+        state["boilerplate_code"] = code_match.group(1).strip()
+    else:
+        raise ValueError("Failed to extract CODE from response.")
+
+    if output_match:
+        state["correct_output"] = output_match.group(1).strip()
+    else:
+        raise ValueError("Failed to extract OUTPUT from response.")
+
+    # Debug logging
+    print("Processed State:", {
+        "summary": state["summary"],
+        "code": state["boilerplate_code"],
+        "output": state["correct_output"]
+    })
+
+    return state
 
 graph.add_node("process_explanation", process_explanation)
 
@@ -135,8 +151,10 @@ def generate_corrected_code(state: dict) -> dict:
         """
     )
     corrected_code = llm.invoke(prompt.format(user_code=state["user_code"], hints_given=state["hints_given"]))
+    # Extract content from AIMessage
+    corrected_code_text = corrected_code.content if hasattr(corrected_code, "content") else str(corrected_code)
     
-    state["user_code"] = corrected_code.strip()
+    state["user_code"] = corrected_code_text.strip()
     return state
 
 graph.add_node("generate_corrected_code", generate_corrected_code)
