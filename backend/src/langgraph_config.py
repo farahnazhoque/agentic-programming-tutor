@@ -31,35 +31,59 @@ graph = StateGraph(AgentState)
 
 # Step 1: Process Explanation (Summarize, Generate Boilerplate, Get Correct Output)
 def process_explanation(state: dict) -> dict:
+    # Add input validation
+    if not state.get("explanation") or state["explanation"].strip() == "":
+        raise ValueError("Explanation cannot be empty")
+    
     prompt = PromptTemplate.from_template(
         template="""
-        Based on the following explanation, perform the following tasks:
-        1. Summarize the explanation in simple terms using bullet points.
-        2. Generate a boilerplate code with comments in {language}.
-        3. Generate the expected correct output for the given boilerplate code.
-        
-        Return the summary, boilerplate code, and correct output in three separate lines.
-        
+        Given this explanation about {language} programming, please provide:
+
+        1. A clear bullet-point summary
+        2. A boilerplate code example in {language} with comments
+        3. The expected output of the code
+
+        Format your response exactly like this:
+        SUMMARY:
+        • Point 1
+        • Point 2
+
+        CODE:
+        <code here>
+
+        OUTPUT:
+        <expected output>
+
         Explanation: {explanation}
         """
     )
 
     response = llm.invoke(prompt.format(explanation=state["explanation"], language=state["language"]))
-    
-    # Extract text properly
     response_text = response.content if hasattr(response, "content") else str(response)
     
-    # Ensure AI returned at least 3 lines
-    response_lines = response_text.strip().split("\n")
-    if len(response_lines) < 3:
-        raise ValueError("AI response format is incorrect. Expected three lines (summary, code, output).")
-
-    summary, boilerplate_code, correct_output = response_lines[:3]
-
-    state["summary"] = summary.strip()
-    state["boilerplate_code"] = boilerplate_code.strip()
-    state["correct_output"] = correct_output.strip()
-    return state
+    # Split by sections
+    sections = response_text.split("\n\n")
+    
+    try:
+        summary = sections[0].replace("SUMMARY:", "").strip()
+        code = sections[1].replace("CODE:", "").strip()
+        output = sections[2].replace("OUTPUT:", "").strip()
+        
+        state["summary"] = summary
+        state["boilerplate_code"] = code
+        state["correct_output"] = output
+        
+        # Debug logging
+        print("Processed State:", {
+            "summary": state["summary"],
+            "code": state["boilerplate_code"],
+            "output": state["correct_output"]
+        })
+        
+        return state
+    except Exception as e:
+        print("Error parsing LLM response:", response_text)
+        raise ValueError(f"Failed to parse LLM response: {str(e)}")
 
 graph.add_node("process_explanation", process_explanation)
 

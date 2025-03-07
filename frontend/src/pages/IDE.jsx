@@ -16,6 +16,7 @@ export default function IDE() {
   console.log("Parsed Data:", parsedData); // Debugging log
 
   const defaultCode = parsedData ? parsedData.boilerplate_code : "print('Hello, World!')";
+  const summary = parsedData ? parsedData.summary : "";
 
   useEffect(() => {
     viewRef.current = new EditorView({
@@ -49,7 +50,26 @@ export default function IDE() {
         </div>
 
         <div className="mx-auto max-w-4xl py-8">
-          <div ref={editorRef} className="mb-4 border rounded-lg shadow-sm"></div>
+          {/* Summary Section */}
+          <div className="mb-8 p-6 bg-gray-50 rounded-lg shadow-sm">
+            <h2 className="text-xl font-semibold mb-4">Summary</h2>
+            <div className="prose">
+              {summary.split('•').map((point, index) => (
+                point.trim() && (
+                  <div key={index} className="flex items-start mb-2">
+                    <span className="mr-2">•</span>
+                    <span>{point.trim()}</span>
+                  </div>
+                )
+              ))}
+            </div>
+          </div>
+
+          {/* Code Editor Section */}
+          <div className="mb-4">
+            <h2 className="text-xl font-semibold mb-4">Code Editor</h2>
+            <div ref={editorRef} className="border rounded-lg shadow-sm"></div>
+          </div>
           
           <button
             className="rounded-md bg-indigo-600 px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
