@@ -68,9 +68,15 @@ export default function IDE() {
           {/* Code Editor Section */}
           <div className="mb-4">
             <h2 className="text-xl font-semibold mb-4">Code Editor</h2>
-            <div ref={editorRef} className="border rounded-lg shadow-sm"></div>
+            <div 
+              ref={editorRef} 
+              className="border rounded-lg shadow-sm"
+              style={{
+                minHeight: defaultCode.split('\n').length * 22 + 'px', // Approximate line height
+                height: 'auto'
+              }}
+            ></div>
           </div>
-          
           <button
             className="rounded-md bg-indigo-600 px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
             onClick={() => {

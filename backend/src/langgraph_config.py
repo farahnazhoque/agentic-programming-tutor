@@ -40,7 +40,7 @@ def process_explanation(state: dict) -> dict:
         Given this explanation about {language} programming, please provide:
 
         1. A clear bullet-point summary
-        2. A boilerplate code example in {language} with comments
+        2.A step-by-step, beginner-friendly boilerplate code example in {language} with inline comments explaining each step, similar to Codecademy's learning style. If the explanation cannot be directly translated into code, create a related coding problem that helps reinforce the concept and provide a structured solution.
         3. The expected output of the code
 
         Format your response exactly like this:
@@ -49,7 +49,11 @@ def process_explanation(state: dict) -> dict:
         • Point 2
 
         CODE:
-        <code here>
+        // Step 1: Explain the first part of the code
+        // Step 2: Introduce the next concept
+        // Step 3: Implement the logic with clarity
+        <boilerplate code here>
+
 
         OUTPUT:
         <expected output>
