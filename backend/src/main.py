@@ -26,7 +26,7 @@ def start_agent():
         explanation = user_input.get("explanation")
         max_attempts = user_input.get("max_attempts", 3)
         language = user_input.get("language", "Python")
-
+        level = user_input.get("level", "Beginner")
         # Validate explanation field
         if not explanation:
             return jsonify({"error": "Explanation field is required"}), 400
@@ -42,7 +42,8 @@ def start_agent():
             "hints_given": [],
             "summary": "",
             "boilerplate_code": "",
-            "is_correct": False
+            "is_correct": False,
+            "level": level
         }
 
         # Run compiled state graph

@@ -25,93 +25,54 @@ class AgentState(TypedDict):
     summary: str
     boilerplate_code: str
     is_correct: bool
-
+    level: str
 # Initialize the graph
 graph = StateGraph(AgentState)
 
 # Step 1: Process Explanation (Summarize, Generate Boilerplate, Get Correct Output)
 def process_explanation(state: dict) -> dict:
-    # Add input validation
     if not state.get("explanation") or state["explanation"].strip() == "":
         raise ValueError("Explanation cannot be empty")
     
     prompt = f"""
     You are an AI that provides structured programming explanations.
-    Given this explanation about {state["explanation"]}:
-    
-    1. **Summarize** the explanation in **clear bullet points**
-    2. **Generate an interactive coding exercise** instead of a complete solution:
-       - **Include step-by-step instructions** in inline comments.
-       - **Leave key parts blank** using `# TODO` placeholders.
-       - **Ensure the user writes missing code to complete the exercise**.
-    3. **Provide the expected output** in a separate `OUTPUT` section.
-    
-    ### **Format your response exactly like this:**
-    
-    ```
-    SUMMARY:
-    • Point 1
-    • Point 2
-
-    CODE:
-    ```{state["language"]}
-    // Step 1: Explain first concept
-    // TODO: Implement the first part
-    // Step 2: Introduce the next part
-    // TODO: Implement the next part
-    // Step 3: Implement the logic clearly
-    // TODO: Implement the logic
-    <boilerplate code>
-    ```
-
-    OUTPUT:
-    ```
-    <expected output>
-    ```
-    ```
-    
-    Explanation: {state["explanation"]}
+    Create a step by step curriculum for learning {state["explanation"]} at {state["level"]} level.
+    Return ONLY valid JSON without any markdown code blocks or additional text.
+    The JSON should follow this structure:
+    {{
+      "title": "Course title",
+      "description": "Course description",
+      "steps": [
+        {{
+          "id": "unique-id",
+          "type": "explanation/exercise/challenge",
+          "content": "Step content in HTML format",
+          "code": "Initial code (if applicable)",
+          "hints": ["hint1", "hint2"],
+          "expectedOutput": "Expected output (if applicable)"
+        }}
+      ]
+    }}
     """
     
-    response = llm.invoke(prompt)
-    response_text = response.content if hasattr(response, "content") else str(response)
-    
-    # Debug print the raw response
-    print("Raw response:", response_text)
-    
-    # Extract using regex
-    import re
-    # Extract summary section using regex pattern:
-    # - Matches "SUMMARY:" followed by whitespace
-    # - Captures all text (.*?) until two newlines (\n\n) are found
-    # - re.DOTALL allows . to match newlines for multi-line summaries
-    summary_match = re.search(r"SUMMARY:\s*(.*?)\n\n", response_text, re.DOTALL)
-    code_match = re.search(r"CODE:\s*```.*?\n(.*?)```", response_text, re.DOTALL)
-    output_match = re.search(r"OUTPUT:\s*```\n(.*?)```", response_text, re.DOTALL)
-
-    if summary_match:
-        state["summary"] = summary_match.group(1).strip()
-    else:
-        raise ValueError("Failed to extract SUMMARY from response.")
-
-    if code_match:
-        state["boilerplate_code"] = code_match.group(1).strip()
-    else:
-        raise ValueError("Failed to extract CODE from response.")
-
-    if output_match:
-        state["correct_output"] = output_match.group(1).strip()
-    else:
-        raise ValueError("Failed to extract OUTPUT from response.")
-
-    # Debug logging
-    print("Processed State:", {
-        "summary": state["summary"],
-        "code": state["boilerplate_code"],
-        "output": state["correct_output"]
-    })
-
-    return state
+    try:
+        response = llm.invoke(prompt)
+        response_text = response.content if hasattr(response, "content") else str(response)
+        
+        # Debug print the raw response
+        print("Raw response:", response_text)
+        
+        # Remove markdown code block markers if present
+        text = response_text.replace("```json", "").replace("```", "")
+        
+        import json
+        parsed_json = json.loads(text)
+        state.update(parsed_json)
+        return state
+        
+    except Exception as e:
+        print("Error parsing LLM response:", response_text)
+        raise ValueError(f"Failed to parse LLM response: {str(e)}")
 
 graph.add_node("process_explanation", process_explanation)
 
