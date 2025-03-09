@@ -2,7 +2,6 @@ import {javascript} from "@codemirror/lang-javascript"
 import {EditorView, basicSetup} from "codemirror"
 import {useEffect, useRef} from "react"
 import {python} from "@codemirror/lang-python"
-import { useParams } from "react-router-dom";
 import { useLocation } from "react-router-dom";
 
 export default function IDE() {
@@ -24,7 +23,9 @@ export default function IDE() {
       parent: editorRef.current,
       extensions: [
         basicSetup,
-        python()
+        python(),
+        javascript()
+        
       ]
     });
   

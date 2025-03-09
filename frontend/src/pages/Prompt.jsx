@@ -10,7 +10,7 @@ export default function Prompt() {
   const [prompt, setPrompt] = useState('');
   const [attempts, setAttempts] = useState(3);
   const [language, setLanguage] = useState('Python');
-
+  const [level, setLevel] = useState('Beginner');
   // Function to send data to backend
   const sendPromptToBackend = async () => {
     try {
@@ -95,6 +95,15 @@ export default function Prompt() {
                 onChange={(e) => setLanguage(e.target.value)}
               >
                 {["Python", "JavaScript", "Java", "C++", "C#", "Ruby", "Go", "Swift", "Kotlin"].map((lang) => (
+                  <option key={lang} value={lang}>{lang}</option>
+                ))}
+              </select>
+              <select
+                className="w-1/2 rounded-lg border border-gray-300 px-4 py-3 text-gray-900 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                value={level}
+                onChange={(e) => setLevel(e.target.value)}
+              >
+                {["Beginner", "Intermediate", "Advanced"].map((lang) => (
                   <option key={lang} value={lang}>{lang}</option>
                 ))}
               </select>
