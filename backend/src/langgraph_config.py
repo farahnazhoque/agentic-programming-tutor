@@ -13,7 +13,7 @@ load_dotenv()
 # Initialize LLM
 llm = get_llm()
 
-# Define the agent's state (use dictionary keys instead of object attributes)
+# Define the agent's state (we add a new key "ai_chat_response" for the chat feedback)
 class AgentState(TypedDict):
     explanation: str
     max_attempts: int
@@ -22,10 +22,11 @@ class AgentState(TypedDict):
     user_code: str
     correct_output: str
     hints_given: List[str]
-    summary: str
     boilerplate_code: str
     is_correct: bool
     level: str
+    ai_chat_response: str  # New field for AI chat feedback
+
 # Initialize the graph
 graph = StateGraph(AgentState)
 
@@ -77,23 +78,45 @@ def process_explanation(state: dict) -> dict:
 graph.add_node("process_explanation", process_explanation)
 
 # Step 2: Check User Output & Provide Hints
-@lru_cache(maxsize=50)  # ✅ Cache repeated incorrect user code
-def get_hints(user_code: str, correct_output: str) -> str:
+@lru_cache(maxsize=50)
+def get_hints(user_code: str, exercise: str) -> str:
     prompt = f"""
-    Analyze the user's code against the expected correct output.
+    You are a helpful programming tutor. Given this code:
+    {user_code}
     
-    - If the code is correct, return: "Correct"
-    - If incorrect, return: "Incorrect" followed by bullet-point hints.
-    
-    User Code: {user_code}
-    Correct Output: {correct_output}
+    And this exercise/task:
+    {exercise}
+
+    Provide a short, helpful hint that:
+    1. Identifies what might be wrong or missing
+    2. Guides the student in the right direction
+    3. Does NOT give away the complete solution
+    4. Uses encouraging, supportive language
+    5. Is specific to their code
+
+    Keep the hint under 2-3 sentences.
     """
-    return llm.invoke(prompt)
+    try:
+        result = llm.invoke(prompt)
+        response = result.content if hasattr(result, "content") else str(result)
+        text = response.replace("```json", "").replace("```", "")
+            
+        # Validate JSON before returning
+        try:
+            import json
+            parsed_json = json.loads(text)
+            return parsed_json
+        except json.JSONDecodeError:
+            raise ValueError("Invalid JSON response from the AI")
+    except Exception as e:
+        raise ValueError(f"Failed to generate hints: {str(e)}")
+
+graph.add_node("get_hints", get_hints)
 
 def check_and_hint_user_output(state: dict) -> dict:
     state["user_attempts"] += 1
     
-    # ✅ Ensure we extract text properly from AIMessage
+    # Get hints using the user's current code and expected output
     response = get_hints(state["user_code"], state["correct_output"])
     response_text = response.content if hasattr(response, "content") else str(response)
 
@@ -101,11 +124,9 @@ def check_and_hint_user_output(state: dict) -> dict:
         state["is_correct"] = True
     else:
         state["is_correct"] = False
-        # ✅ Now response_text is a string, so we can safely use .replace()
         state["hints_given"].append(response_text.replace("Incorrect", "").strip())  
 
     return state
-
 
 graph.add_node("check_and_hint", check_and_hint_user_output)
 
@@ -120,7 +141,6 @@ def generate_corrected_code(state: dict) -> dict:
         """
     )
     corrected_code = llm.invoke(prompt.format(user_code=state["user_code"], hints_given=state["hints_given"]))
-    # Extract content from AIMessage
     corrected_code_text = corrected_code.content if hasattr(corrected_code, "content") else str(corrected_code)
     
     state["user_code"] = corrected_code_text.strip()
@@ -130,37 +150,53 @@ graph.add_node("generate_corrected_code", generate_corrected_code)
 
 # Step 4: Verify Corrected Code
 def verify_corrected_code(state: dict) -> dict:
-    response = get_hints(state["user_code"], state["correct_output"])  # Reuse checking logic
-    
+    response = get_hints(state["user_code"], state["correct_output"])
     if "Correct" in response:
         state["is_correct"] = True
     else:
-        state["is_correct"] = False  # This shouldn't happen often since LLM is correcting it.
-    
+        state["is_correct"] = False
     return state
 
 graph.add_node("verify_corrected_code", verify_corrected_code)
 
-# Step 5: Graph Flow with Correct Conditions
-graph.add_edge(START, "process_explanation")
-graph.add_edge("process_explanation", "check_and_hint")
+# New Function: AI Chat to Provide Guidance Based on Current Code
+def ai_chat(state: dict) -> dict:
+    prompt = f"""
+    You are a coding assistant. Please review the user's current code in the editor and provide guidance or suggestions on what to do next.
+    Do not wait for a code submission; simply provide helpful feedback based on the current code.
+    
+    Current code:
+    {state["user_code"]}
+    """
+    response = llm.invoke(prompt)
+    chat_feedback = response.content if hasattr(response, "content") else str(response)
+    state["ai_chat_response"] = chat_feedback.strip()
+    return state
 
-# ✅ Fixed function for condition-based branching
+graph.add_node("ai_chat", ai_chat)
+
+# You can choose to integrate the ai_chat node into your main flow.
+# For example, you might run it right after the explanation is processed:
+graph.add_edge(START, "process_explanation")
+graph.add_edge("process_explanation", "ai_chat")
+graph.add_edge("ai_chat", "check_and_hint")
+
+# Branching based on the outcome of check_and_hint
 def branch_fn(state: dict):
     if state["is_correct"]:
         return "end"
     elif state["user_attempts"] < state["max_attempts"]:
-        return "retry"
+        return "check_and_hint"
     else:
-        return "max_attempts"
+        return "generate_corrected_code"
 
 graph.add_conditional_edges(
     "check_and_hint",
     branch_fn,
     {
         "end": END,
-        "retry": "check_and_hint",
-        "max_attempts": "generate_corrected_code"
+        "check_and_hint": "check_and_hint",
+        "generate_corrected_code": "generate_corrected_code"
     }
 )
 
@@ -168,5 +204,5 @@ graph.add_conditional_edges(
 graph.add_edge("generate_corrected_code", "verify_corrected_code")
 graph.add_edge("verify_corrected_code", END)
 
-# ✅ Compile the Graph
+# Compile the Graph
 compiled_graph = graph.compile()
